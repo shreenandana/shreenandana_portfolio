@@ -1,11 +1,16 @@
 const express = require('express');
-const mysql = require('mysql2/promise');
 const cors = require('cors');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Middleware
 app.use(cors());
@@ -15,135 +20,22 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static files from the current directory
 app.use(express.static(path.join(__dirname)));
 
-// MySQL Database configuration
-let pool;
-try {
-    const dbOptions = {
-        waitForConnections: true,
-        connectionLimit: 5,
-        queueLimit: 0,
-        ssl: {
-            rejectUnauthorized: true
-        }
-    };
-
-    if (process.env.DATABASE_URL) {
-        // If it's a URL (like mysql://...), use it directly as the first argument
-        console.log('Using DATABASE_URL for pool creation');
-        pool = mysql.createPool(process.env.DATABASE_URL);
-        // Note: We might need to manually set pool options after or use a specific format
-    } else {
-        console.log('Using individual DB environment variables');
-        pool = mysql.createPool({
-            host: process.env.DB_HOST || 'localhost',
-            user: process.env.DB_USER || 'root',
-            password: process.env.DB_PASSWORD || '',
-            database: process.env.DB_NAME || 'portfolio_db',
-            ...dbOptions
-        });
-    }
-} catch (err) {
-    console.error('CRITICAL: Failed to create MySQL pool:', err.message);
-}
-
-// Health Check (To test if the function is alive without DB)
+// Health Check
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'alive',
         time: new Date().toISOString(),
         env: process.env.NODE_ENV,
-        hasDbUrl: !!process.env.DATABASE_URL
+        supabaseConnected: !!supabaseUrl && !!supabaseKey
     });
 });
 
-
-// Fallback for root / to serve index.html if hit directly
+// Fallback for root / to serve index.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'index.html'));
 });
 
-// Middleware to ensure DB is initialized
-let dbInitialized = false;
-async function ensureDb() {
-    if (dbInitialized) return;
-
-    let connection;
-    try {
-        console.log('Lazy-initializing database...');
-        connection = await pool.getConnection();
-
-        // Create tables if they don't exist
-        await connection.query(`CREATE TABLE IF NOT EXISTS contacts (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, email VARCHAR(255) NOT NULL, message TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-        await connection.query(`CREATE TABLE IF NOT EXISTS site_content (section_key VARCHAR(100) PRIMARY KEY, content TEXT NOT NULL)`);
-        await connection.query(`CREATE TABLE IF NOT EXISTS skills (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL)`);
-        await connection.query(`CREATE TABLE IF NOT EXISTS projects (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, description TEXT NOT NULL, image_url VARCHAR(255) DEFAULT '', code_url VARCHAR(255) DEFAULT '', live_url VARCHAR(255) DEFAULT '')`);
-
-        // Insert default content if empty
-        const [contentRows] = await connection.query('SELECT COUNT(*) as count FROM site_content');
-        if (contentRows[0].count === 0) {
-            const defaultContent = [['hero_greeting', "Hi, I'm"], ['hero_name', 'Sanjana'], ['hero_role', 'Web Developer'], ['hero_description', 'Love creating beautiful websites.'], ['about_p1', 'CS student.'], ['about_p2', 'Passionate developer.']];
-            for (const [key, val] of defaultContent) {
-                await connection.query('INSERT IGNORE INTO site_content (section_key, content) VALUES (?, ?)', [key, val]);
-            }
-        }
-
-        dbInitialized = true;
-        console.log('Database initialization complete.');
-    } catch (err) {
-        console.error('CRITICAL: Database initialization failed:', err.message);
-        throw err; // Re-throw so the request fails visibly
-    } finally {
-        if (connection) connection.release();
-    }
-}
-
-// Add ensureDb to all API routes
-app.use('/api', async (req, res, next) => {
-    try {
-        await ensureDb();
-        next();
-    } catch (err) {
-        res.status(500).json({ error: 'Database connection failed', details: err.message });
-    }
-});
-
-// Global crash protection for serverless initialization errors
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
-});
-process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-
-// API endpoint to handle form submissions
-app.post('/api/contact', async (req, res) => {
-    const { name, email, message } = req.body;
-
-    if (!name || !email || !message) {
-        return res.status(400).json({ error: 'Please provide name, email, and message.' });
-    }
-
-    try {
-        const [result] = await pool.execute(
-            'INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)',
-            [name, email, message]
-        );
-
-        res.status(201).json({
-            success: true,
-            message: 'Message saved successfully',
-            id: result.insertId
-        });
-    } catch (err) {
-        console.error('Error inserting data:', err.message);
-        res.status(500).json({ error: 'Failed to save message due to a database error.' });
-    }
-});
-
-// --- NEW API ENDPOINTS FOR DYNAMIC CONTENT ---
-
-// Middleware for simple admin authentication
+// Admin Authentication Middleware
 const checkAuth = (req, res, next) => {
     const password = req.headers['x-admin-password'];
     if (password === process.env.ADMIN_PASSWORD) {
@@ -153,38 +45,41 @@ const checkAuth = (req, res, next) => {
     }
 };
 
+// --- API ENDPOINTS ---
+
 // Site Content
 app.get('/api/content', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT section_key, content FROM site_content');
+        const { data, error } = await supabase
+            .from('site_content')
+            .select('section_key, content');
+
+        if (error) throw error;
+
         const content = {};
-        rows.forEach(row => {
+        data.forEach(row => {
             content[row.section_key] = row.content;
         });
         res.json(content);
     } catch (err) {
+        console.error('Error fetching content:', err.message);
         res.status(500).json({ error: 'Failed to fetch content' });
     }
 });
 
 app.put('/api/content', checkAuth, async (req, res) => {
-    const updates = req.body; // Expects object: { hero_greeting: "Hello", ... }
+    const updates = req.body; 
+    const rows = Object.entries(updates).map(([key, val]) => ({ section_key: key, content: val }));
 
     try {
-        const connection = await pool.getConnection();
-        await connection.beginTransaction();
+        const { error } = await supabase
+            .from('site_content')
+            .upsert(rows);
 
-        for (const [key, val] of Object.entries(updates)) {
-            await connection.query(
-                'INSERT INTO site_content (section_key, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = ?',
-                [key, val, val]
-            );
-        }
-
-        await connection.commit();
-        connection.release();
+        if (error) throw error;
         res.json({ success: true });
     } catch (err) {
+        console.error('Error updating content:', err.message);
         res.status(500).json({ error: 'Failed to update content' });
     }
 });
@@ -192,9 +87,15 @@ app.put('/api/content', checkAuth, async (req, res) => {
 // Skills
 app.get('/api/skills', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM skills');
-        res.json(rows);
+        const { data, error } = await supabase
+            .from('skills')
+            .select('*')
+            .order('id', { ascending: true });
+
+        if (error) throw error;
+        res.json(data);
     } catch (err) {
+        console.error('Error fetching skills:', err.message);
         res.status(500).json({ error: 'Failed to fetch skills' });
     }
 });
@@ -204,18 +105,31 @@ app.post('/api/skills', checkAuth, async (req, res) => {
     if (!name) return res.status(400).json({ error: 'Skill name required' });
 
     try {
-        const [result] = await pool.execute('INSERT INTO skills (name) VALUES (?)', [name]);
-        res.status(201).json({ id: result.insertId, name });
+        const { data, error } = await supabase
+            .from('skills')
+            .insert([{ name }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.status(201).json(data);
     } catch (err) {
+        console.error('Error adding skill:', err.message);
         res.status(500).json({ error: 'Failed to add skill' });
     }
 });
 
 app.delete('/api/skills/:id', checkAuth, async (req, res) => {
     try {
-        await pool.execute('DELETE FROM skills WHERE id = ?', [req.params.id]);
+        const { error } = await supabase
+            .from('skills')
+            .delete()
+            .eq('id', req.params.id);
+
+        if (error) throw error;
         res.json({ success: true });
     } catch (err) {
+        console.error('Error deleting skill:', err.message);
         res.status(500).json({ error: 'Failed to delete skill' });
     }
 });
@@ -223,9 +137,15 @@ app.delete('/api/skills/:id', checkAuth, async (req, res) => {
 // Projects
 app.get('/api/projects', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM projects');
-        res.json(rows);
+        const { data, error } = await supabase
+            .from('projects')
+            .select('*')
+            .order('id', { ascending: true });
+
+        if (error) throw error;
+        res.json(data);
     } catch (err) {
+        console.error('Error fetching projects:', err.message);
         res.status(500).json({ error: 'Failed to fetch projects' });
     }
 });
@@ -234,13 +154,22 @@ app.post('/api/projects', checkAuth, async (req, res) => {
     const { title, description, image_url, code_url, live_url } = req.body;
 
     try {
-        const [result] = await pool.execute(
-            'INSERT INTO projects (title, description, image_url, code_url, live_url) VALUES (?, ?, ?, ?, ?)',
-            [title, description, image_url || '', code_url || '', live_url || '']
-        );
-        res.status(201).json({ id: result.insertId, title, description, image_url, code_url, live_url });
+        const { data, error } = await supabase
+            .from('projects')
+            .insert([{ 
+                title, 
+                description, 
+                image_url: image_url || '', 
+                code_url: code_url || '', 
+                live_url: live_url || '' 
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        res.status(201).json(data);
     } catch (err) {
-        console.error(err);
+        console.error('Error adding project:', err.message);
         res.status(500).json({ error: 'Failed to add project' });
     }
 });
@@ -249,31 +178,74 @@ app.put('/api/projects/:id', checkAuth, async (req, res) => {
     const { title, description, image_url, code_url, live_url } = req.body;
 
     try {
-        await pool.execute(
-            'UPDATE projects SET title = ?, description = ?, image_url = ?, code_url = ?, live_url = ? WHERE id = ?',
-            [title, description, image_url, code_url, live_url, req.params.id]
-        );
+        const { error } = await supabase
+            .from('projects')
+            .update({ title, description, image_url, code_url, live_url })
+            .eq('id', req.params.id);
+
+        if (error) throw error;
         res.json({ success: true });
     } catch (err) {
+        console.error('Error updating project:', err.message);
         res.status(500).json({ error: 'Failed to update project' });
     }
 });
 
 app.delete('/api/projects/:id', checkAuth, async (req, res) => {
     try {
-        await pool.execute('DELETE FROM projects WHERE id = ?', [req.params.id]);
+        const { error } = await supabase
+            .from('projects')
+            .delete()
+            .eq('id', req.params.id);
+
+        if (error) throw error;
         res.json({ success: true });
     } catch (err) {
+        console.error('Error deleting project:', err.message);
         res.status(500).json({ error: 'Failed to delete project' });
+    }
+});
+
+// Contact Form
+app.post('/api/contact', async (req, res) => {
+    const { name, email, message } = req.body;
+
+    if (!name || !email || !message) {
+        return res.status(400).json({ error: 'Please provide name, email, and message.' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('contacts')
+            .insert([{ name, email, message }])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({
+            success: true,
+            message: 'Message saved successfully',
+            id: data.id
+        });
+    } catch (err) {
+        console.error('Error saving contact message:', err.message);
+        res.status(500).json({ error: 'Failed to save message.' });
     }
 });
 
 // Messages (Admin only)
 app.get('/api/messages', checkAuth, async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT * FROM contacts ORDER BY created_at DESC');
-        res.json(rows);
+        const { data, error } = await supabase
+            .from('contacts')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json(data);
     } catch (err) {
+        console.error('Error fetching messages:', err.message);
         res.status(500).json({ error: 'Failed to fetch messages' });
     }
 });
