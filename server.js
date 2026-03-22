@@ -32,7 +32,7 @@ app.get('/api/health', (req, res) => {
 
 // Fallback for root / to serve index.html
 app.get('/', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Admin Authentication Middleware
