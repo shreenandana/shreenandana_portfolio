@@ -17,8 +17,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from the current directory
-app.use(express.static(path.join(__dirname)));
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -30,9 +30,9 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Fallback for root / to serve index.html
+// Fallback for root / to serve index.html from public
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Admin Authentication Middleware
