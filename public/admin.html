@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="admin-overlay">
+        <div class="login-card">
+            <div class="logo">Admin<span>Panel</span></div>
+            <p>Enter your password to manage your portfolio.</p>
+            <form id="login-form">
+                <input type="password" id="admin-password" placeholder="Admin Password" required>
+                <button type="submit" class="btn primary">Login</button>
+            </form>
+            <div id="login-error" class="error-msg"></div>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" class="dashboard-container" style="display: none;">
+        <aside class="sidebar">
+            <div class="logo">Admin<span>Panel</span></div>
+            <nav class="admin-nav">
+                <button class="tab-btn active" data-target="content-tab">
+                    <i data-lucide="layout"></i> General Content
+                </button>
+                <button class="tab-btn" data-target="projects-tab">
+                    <i data-lucide="briefcase"></i> Projects
+                </button>
+                <button class="tab-btn" data-target="skills-tab">
+                    <i data-lucide="code"></i> Skills
+                </button>
+                <button class="tab-btn" data-target="messages-tab">
+                    <i data-lucide="mail"></i> Messages
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/" class="btn secondary small"><i data-lucide="external-link"></i> View Site</a>
+                <button id="logout-btn" class="btn logout small"><i data-lucide="log-out"></i> Logout</button>
+            </div>
+        </aside>
+
+        <main class="dashboard-content">
+            <header class="dashboard-header">
+                <h1 id="current-section-title">General Content</h1>
+                <div id="save-status" class="status-indicator"></div>
+            </header>
+
+            <!-- General Content Tab -->
+            <section id="content-tab" class="tab-content active">
+                <form id="content-form" class="admin-form">
+                    <div class="form-section">
+                        <h3>Hero Section</h3>
+                        <div class="form-group row">
+                            <label>Greeting</label>
+                            <input type="text" id="hero_greeting" name="hero_greeting">
+                        </div>
+                        <div class="form-group row">
+                            <label>Name</label>
+                            <input type="text" id="hero_name" name="hero_name">
+                        </div>
+                        <div class="form-group row">
+                            <label>Role</label>
+                            <input type="text" id="hero_role" name="hero_role">
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea id="hero_description" name="hero_description" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>About Section</h3>
+                        <div class="form-group">
+                            <label>Paragraph 1</label>
+                            <textarea id="about_p1" name="about_p1" rows="4"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Paragraph 2</label>
+                            <textarea id="about_p2" name="about_p2" rows="4"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">Save All Content</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Projects Tab -->
+            <section id="projects-tab" class="tab-content">
+                <div class="split-layout">
+                    <!-- Project List -->
+                    <div class="list-panel">
+                        <div class="panel-header">
+                            <h3>Current Projects</h3>
+                            <button id="add-project-btn" class="btn primary small"><i data-lucide="plus"></i> Add
+                                New</button>
+                        </div>
+                        <div id="projects-list" class="item-list">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Project Editor -->
+                    <div class="editor-panel">
+                        <h3 id="project-editor-title">Add/Edit Project</h3>
+                        <form id="project-form" class="admin-form">
+                            <input type="hidden" id="project_id" name="id">
+                            <div class="form-group">
+                                <label>Project Title</label>
+                                <input type="text" id="project_title" name="title" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <textarea id="project_description" name="description" rows="4" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Image Filename/URL</label>
+                                <input type="text" id="project_image" name="image_url" placeholder="e.g. project1.jpg">
+                            </div>
+                            <div class="form-group row">
+                                <div class="half">
+                                    <label>Code URL (GitHub)</label>
+                                    <input type="text" id="project_code" name="code_url">
+                                </div>
+                                <div class="half">
+                                    <label>Live URL</label>
+                                    <input type="text" id="project_live" name="live_url">
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" id="cancel-project-btn" class="btn secondary">Cancel</button>
+                                <button type="submit" class="btn primary">Save Project</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Skills Tab -->
+            <section id="skills-tab" class="tab-content">
+                <div class="form-section">
+                    <h3>Add New Skill</h3>
+                    <form id="skill-form" class="admin-inline-form">
+                        <input type="text" id="new-skill-name" placeholder="Skill Name (e.g. React)" required>
+                        <button type="submit" class="btn primary">Add Skill</button>
+                    </form>
+                </div>
+
+                <div class="form-section">
+                    <h3>Current Skills</h3>
+                    <div id="skills-list" class="admin-skills-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Messages Tab -->
+            <section id="messages-tab" class="tab-content">
+                <div class="messages-container">
+                    <h3>Contact Form Submissions</h3>
+                    <div class="table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Message</th>
+                                </tr>
+                            </thead>
+                            <tbody id="messages-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="admin.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

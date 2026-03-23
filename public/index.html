@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shreenandana | Portfolio</title>
+    <meta name="description" content="Simple Developer Portfolio">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script defer src="script.js"></script>
+</head>
+
+<body>
+    <header>
+        <div class="container nav-container">
+            <a href="#home" class="logo">shreenandana<span>.</span></a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#projects">Projects</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section id="home" class="hero">
+            <div class="container hero-inner">
+                <div class="hero-text">
+                    <h1 id="hero-greeting">Hi, I'm <span id="hero-name">Shreenandana</span></h1>
+                    <h2 id="hero-role">Software Developer</h2>
+                    <p id="hero-description">Software engineering student passionate about building clean and functional
+                        web applications.</p>
+                    <div class="hero-links">
+                        <a href="https://github.com/shreenandana" target="_blank" aria-label="GitHub"><i
+                                data-lucide="github"></i></a>
+                        <a href="https://www.linkedin.com/in/shreenandana-haridas-535921383/" target="_blank"
+                            aria-label="LinkedIn"><i data-lucide="linkedin"></i></a>
+                        <a href="mailto:23bclb52@kristujayanti.com" target="_blank" aria-label="Email"><i
+                                data-lucide="mail"></i></a>
+                    </div>
+                </div>
+                <!-- Hide image if file not found to keep it simple -->
+                <div class="hero-image">
+                    <img src="profile_pic.jpeg" alt="Shreenandana" onerror="this.style.display='none'">
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="about">
+            <div class="container">
+                <h2>About Me</h2>
+                <div class="content-wrapper">
+                    <div class="about-text">
+                        <p id="about-p1">I am a dedicated student pursuing a degree in Computer Science.</p>
+                    </div>
+                    <div class="skills-box">
+                        <h3>Skills</h3>
+                        <div id="skills-container" class="skills-list">
+                            <!-- Skills dynamically inserted here -->
+                            <span>Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Projects Section -->
+        <section id="projects" class="projects">
+            <div class="container">
+                <h2>Projects</h2>
+                <div id="project-grid" class="project-grid">
+                    <!-- Projects dynamically inserted here -->
+                    <p>Loading projects...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="contact">
+            <div class="container">
+                <h2>Contact</h2>
+                <div class="contact-wrapper">
+                    <div class="contact-info">
+                        <p>Feel free to reach out for collaborations or just a friendly hello!</p>
+                        <p><i data-lucide="mail" class="inline-icon"></i> 25bclb52@kristujayanti.com</p>
+                    </div>
+                    <form id="contact-form" class="contact-form">
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" id="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="message">Message</label>
+                            <textarea id="message" rows="4" required></textarea>
+                        </div>
+                        <button type="submit" class="btn">Send Message</button>
+                        <p id="form-status" class="form-status"></p>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; <span id="year"></span> Shreenandana Haridas. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+
+</html>
